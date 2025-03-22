@@ -16,15 +16,17 @@ graph = Neo4jGraph()
 # gemini_llm = genai.Gemini(api_key=os.environ["GOOGLE_API_KEY"])
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro",
+    model="models/gemini-1.5-flash",
+    google_api_key="AIzaSyD2nLQBuG7fKoUtn3DDxM-6hs1sYAh4-EA",
     temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    # other params...
 )
-chain = GraphCypherQAChain.from_llm(llm=llm, graph=graph, verbose=True,allow_dangerous_requests=True )
-
+chain = GraphCypherQAChain.from_llm(
+    llm=llm,
+    graph=graph,
+    verbose=True,
+    cypher_generation_prompt="""Use MajorTopic for diseases (e.g., Influenza) and symptoms (e.g., Fever), and Topic for medicines (e.g., Paracetamol (recommended)) and treatments (e.g., Rest).""",
+    allow_dangerous_requests=True,
+)
 # Query
-response = chain.run("If a patient has symptoms of fever, cough, and shortness of breath, what conditions might they have and what are the recommended treatments?")
+response = chain.run("I have a history of heart disease, diabetes, and high blood pressure. Recently, my blood pressure dropped really low (systolic in the 70s-80s), and I wasn’t able to pee for almost 17 hours. When I finally did, my urine was murky brown, and there might have been some discharge too. I was given IV fluids and dopamine to raise my blood pressure. I also have congestive heart failure with a very low ejection fraction (15-20%), Alzheimer’s, and a history of gastrointestinal bleeding. Given all this, should I be concerned? What could be causing my symptoms?")
 print(response)
