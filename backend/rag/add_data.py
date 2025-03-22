@@ -51,23 +51,12 @@ class VectorDatabase:
         return results
 
 def process_text_files(folder_path, max_files=10):
-    """
-    Process text files in a folder and return formatted documents
-    
-    Args:
-        folder_path (str): Path to folder containing text files
-        max_files (int, optional): Maximum number of files to process. Default is None (all files).
-        
-    Returns:
-        list: List of Document objects
-    """
     from langchain_core.documents import Document
     
     all_docs = []
     file_count = 0
     
     for file_path in Path(folder_path).glob("*.txt"):
-        # Check if we've reached the maximum number of files
         if max_files is not None and file_count >= max_files:
             print(f"Reached limit of {max_files} files. Stopping.")
             break
@@ -76,7 +65,6 @@ def process_text_files(folder_path, max_files=10):
             elements = partition(str(file_path))
             chunks = chunk_elements(elements, max_characters=512, overlap=50)
             
-            # Convert to LangChain Documents
             for i, chunk in enumerate(chunks):
                 doc = Document(
                     page_content=chunk.text,
@@ -98,27 +86,8 @@ def process_text_files(folder_path, max_files=10):
     print(f"Total documents created: {len(all_docs)}")
     return all_docs
 
-# Example usage
 if __name__ == "__main__":
-    # Initialize the vector database
     vector_db = VectorDatabase()
-    
-    # Process text files from a folder
-    folder_path = "/home/nazal/Downloads/med_data/dataset"  # Replace with your folder path
+    folder_path = "/home/nazal/Downloads/med_data/dataset"  
     documents = process_text_files(folder_path)
     
-    # Add documents to the vector database
-    if documents:
-        vector_db.add_docs(documents)
-        
-        # Test with a query
-        query = "Your test query here"  # Replace with your query
-        results = vector_db.perform_similarity_search(query, k=3)
-        
-        # Display results
-        print("\nQuery Results:")
-        for i, doc in enumerate(results):
-            print(f"\nResult {i+1}:")
-            print(f"Source: {doc.metadata['source']}")
-            print(f"Chunk: {doc.metadata['chunk']}")
-            print(f"Content: {doc.page_content[:200]}...")  # Show first 200 chars

@@ -40,28 +40,15 @@ def handle_document(doc_path):
     return formatted_chunks
 
 def process_folder(folder_path, max_files=None):
-    """
-    Process a specified number of .txt files in a folder
-    
-    Args:
-        folder_path (str): Path to the folder containing txt files
-        max_files (int, optional): Maximum number of files to process. If None, process all files.
-        
-    Returns:
-        list: Combined list of all processed chunks
-    """
     all_chunks = []
     
-    # Get list of all txt files
     all_txt_files = list(Path(folder_path).glob('*.txt'))
     
-    # Limit to max_files if specified
     if max_files is not None:
         total_files = len(all_txt_files)
         all_txt_files = all_txt_files[:max_files]
         print(f"Processing {len(all_txt_files)} out of {total_files} files")
     
-    # Process each file
     for file_path in all_txt_files:
         try:
             chunks = handle_document(str(file_path))
