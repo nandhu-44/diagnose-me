@@ -17,114 +17,202 @@ export default function ChatPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const token = localStorage.getItem('token');
     const storedUserType = localStorage.getItem('userType');
     
-    if (!isLoggedIn || !storedUserType) {
+    if (!token || !storedUserType) {
       router.push('/');
       return;
     }
     
     setUserType(storedUserType);
     
+    // Fetch initial data based on user type
     if (storedUserType === 'patient') {
-      setMessages([
-        {
-          id: Date.now(),
-          role: 'system',
-          content: 'Welcome to Diagnose Me! Please describe your symptoms in detail, and I\'ll provide health insights based on your medical history.'
-        }
-      ]);
+      fetchPatientChats();
     } else {
-      setPendingQueries([
-        {
-          id: 1,
-          patientName: 'John Smith',
-          query: 'I\'ve been experiencing severe headaches for the past 3 days, particularly in the morning.',
-          aiResponse: 'Based on the symptoms described and your history of high blood pressure, these could be tension headaches or potentially related to blood pressure fluctuations. I recommend scheduling an appointment with your doctor to rule out serious conditions.',
-          status: 'pending'
-        },
-        {
-          id: 2,
-          patientName: 'Sarah Johnson',
-          query: 'I have a persistent dry cough that has lasted for 2 weeks now. No fever or other symptoms.',
-          aiResponse: 'A persistent dry cough lasting two weeks without fever could be due to several causes including post-nasal drip, asthma, GERD, or an environmental irritant. Given your history of seasonal allergies, this could be related. Monitor for any changes and consider an antihistamine.',
-          status: 'pending'
-        }
-      ]);
+      fetchPendingQueries();
     }
   }, [router]);
+
+  const fetchPatientChats = async () => {
+    try {
+      const response = await fetch('/api/chats/patient', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.chats.length === 0) {
+          setMessages([{
+            id: Date.now(),
+            role: 'system',
+            content: 'Welcome to Diagnose Me! Please describe your symptoms in detail, and I\'ll provide health insights based on your medical history.'
+          }]);
+        } else {
+          setMessages(data.chats[0].messages); // Show most recent chat
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+    }
+  };
+
+  const fetchPendingQueries = async () => {
+    try {
+      const response = await fetch('/api/chats/doctor/pending', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPendingQueries(data.queries);
+      }
+    } catch (error) {
+      console.error('Error fetching pending queries:', error);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('userType');
     localStorage.removeItem('isLoggedIn');
     router.push('/');
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
     
-    setMessages(prevMessages => [
-      ...prevMessages,
-      { id: Date.now(), role: 'user', content: inputValue }
-    ]);
+    const messageContent = inputValue;
+    setInputValue('');
+    
+    setMessages(prev => [...prev, { 
+      id: Date.now(),
+      role: 'user',
+      content: messageContent
+    }]);
     
     setIsLoading(true);
-    setTimeout(() => {
-      const mockResponse = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: `Based on your symptoms "${inputValue}", it appears you may be experiencing a common condition. Please note this is not a definitive diagnosis. Would you like to use this information now or wait for a doctor's review?`,
-        options: ['Use Now', 'Wait for Doctor']
-      };
-      
-      setMessages(prevMessages => [...prevMessages, mockResponse]);
-      setIsLoading(false);
-    }, 1500);
     
-    setInputValue('');
-  };
-
-  const handleOptionSelect = (option) => {
-    if (option === 'Use Now') {
-      setMessages(prevMessages => [
-        ...prevMessages,
-        { 
-          id: Date.now(), 
-          role: 'system', 
-          content: 'You have chosen to use this information now. The solution has been saved to your medical history.' 
-        }
-      ]);
-    } else {
-      setMessages(prevMessages => [
-        ...prevMessages,
-        { 
-          id: Date.now(), 
-          role: 'system', 
-          content: 'Your query has been sent to a doctor for review. You will be notified when they respond.' 
-        }
-      ]);
+    try {
+      const response = await fetch('/api/chats/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ query: messageContent })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'assistant',
+          content: data.response,
+          options: ['Use Now', 'Wait for Doctor']
+        }]);
+      } else {
+        throw new Error('Failed to get response');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: 'system',
+        content: 'Sorry, there was an error processing your request. Please try again.'
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleApproveQuery = (id) => {
-    setPendingQueries(queries => 
-      queries.map(q => q.id === id ? {...q, status: 'approved'} : q)
-    );
+  const handleOptionSelect = async (option) => {
+    try {
+      const response = await fetch('/api/chats/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          action: option === 'Use Now' ? 'accept' : 'review',
+          chatId: messages[messages.length - 2].id // Get the user's message ID
+        })
+      });
+      
+      if (response.ok) {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'system',
+          content: option === 'Use Now' 
+            ? 'You have chosen to use this information now. The solution has been saved to your medical history.'
+            : 'Your query has been sent to a doctor for review. You will be notified when they respond.'
+        }]);
+      }
+    } catch (error) {
+      console.error('Error processing action:', error);
+    }
   };
 
-  const handleRejectQuery = (id) => {
-    setPendingQueries(queries => 
-      queries.map(q => q.id === id ? {...q, status: 'rejected'} : q)
-    );
+  const handleApproveQuery = async (id) => {
+    try {
+      const response = await fetch(`/api/chats/doctor/review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          chatId: id,
+          action: 'approve'
+        })
+      });
+      
+      if (response.ok) {
+        setPendingQueries(queries => 
+          queries.map(q => q.id === id ? {...q, status: 'approved'} : q)
+        );
+      }
+    } catch (error) {
+      console.error('Error approving query:', error);
+    }
   };
 
-  if (!userType) return null; 
+  const handleRejectQuery = async (id) => {
+    try {
+      const response = await fetch(`/api/chats/doctor/review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          chatId: id,
+          action: 'reject'
+        })
+      });
+      
+      if (response.ok) {
+        setPendingQueries(queries => 
+          queries.map(q => q.id === id ? {...q, status: 'rejected'} : q)
+        );
+      }
+    } catch (error) {
+      console.error('Error rejecting query:', error);
+    }
+  };
+
+  if (!userType) return null;
 
   return (
     <div className="min-h-screen bg-background">

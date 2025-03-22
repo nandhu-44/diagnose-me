@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import Image from 'next/image';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,64 +12,103 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function Home() {
-  const [userType, setUserType] = useState('patient');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginPage() {
   const [error, setError] = useState('');
+  const [userType, setUserType] = useState('patient');
   const router = useRouter();
+  const { register, handleSubmit, formState: { errors } } = useForm();
 
-  const validCredentials = {
-    patient: { username: 'patient', password: 'password123' },
-    doctor: { username: 'doctor', password: 'password123' }
-  };
+  const onSubmit = async (data) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          userType
+        }),
+      });
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    setError('');
-    
-    const credentials = validCredentials[userType];
-    if (username === credentials.username && password === credentials.password) {
-      localStorage.setItem('userType', userType);
-      localStorage.setItem('isLoggedIn', 'true');
-      router.push('/chat');
-    } else {
-      setError('Invalid credentials. Please try again.');
+      const result = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('userType', userType);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('token', result.token);
+        router.push('/chat');
+      } else {
+        setError(result.message || 'Invalid credentials. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background">
-      <Card className="w-full max-w-md py-10 flex-col px-4">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Diagnose Me</CardTitle>
-          <CardDescription>Medical Records RAG System</CardDescription>
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-b from-background to-primary/5">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80">
+          <div className="relative left-[calc(50%-20rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-primary to-secondary opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]" />
+        </div>
+      </div>
+
+      <div className="mb-8 text-center space-y-2">
+        <Image 
+          src="/diagnose-me-logo.svg" 
+          alt="Diagnose Me Logo" 
+          width={64} 
+          height={64} 
+          className="mx-auto"
+        />
+        <h1 className="text-4xl font-bold tracking-tight gradient-text">
+          Diagnose Me
+        </h1>
+        <p className="text-muted-foreground">
+          AI-powered medical symptom analysis and doctor consultation platform
+        </p>
+      </div>
+
+      <Card className="w-full max-w-md shadow-lg border-primary/10">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+          <CardDescription className="text-center">
+            {userType === 'patient' 
+              ? 'Login to manage your health journey'
+              : 'Access your doctor dashboard'}
+          </CardDescription>
         </CardHeader>
 
-        <Tabs defaultValue="patient" className="w-full" onValueChange={setUserType}>
-          <TabsList className="grid grid-cols-2">
-            <TabsTrigger value="patient">Patient Login</TabsTrigger>
-            <TabsTrigger value="doctor">Doctor Login</TabsTrigger>
+        <Tabs value={userType} onValueChange={setUserType} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="patient" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Patient Login
+            </TabsTrigger>
+            <TabsTrigger value="doctor" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Doctor Login
+            </TabsTrigger>
           </TabsList>
-          
-          <CardContent className="pt-6">
+
+          <CardContent className="p-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-6">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder={userType === 'patient' ? "Enter patient username" : "Enter doctor username"}
-                  required
+                  {...register("username", { required: "Username is required" })}
+                  placeholder={`Enter your username`}
+                  className="bg-background"
                 />
+                {errors.username && (
+                  <p className="text-sm text-destructive">{errors.username.message}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -75,38 +116,36 @@ export default function Home() {
                 <Input
                   id="password"
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  required
+                  {...register("password", { required: "Password is required" })}
+                  placeholder="Enter your password"
+                  className="bg-background"
                 />
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                )}
               </div>
               
               <Button type="submit" className="w-full">
-                Login
+                Sign in
               </Button>
             </form>
           </CardContent>
-        </Tabs>
-        
-        <CardFooter className="flex flex-col">
-          {userType === 'patient' && (
-            <p className="text-center mt-2 text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Button variant="link" className="p-0">
-                Sign up
-              </Button>
-            </p>
-          )}
           
-          <div className="mt-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Demo credentials: <br/>
-              Patient - username: <span className="font-mono">patient</span>, password: <span className="font-mono">password123</span><br/>
-              Doctor - username: <span className="font-mono">doctor</span>, password: <span className="font-mono">password123</span>
-            </p>
-          </div>
-        </CardFooter>
+          <CardFooter className="flex flex-col pb-6">
+            {userType === 'patient' ? (
+              <p className="text-center text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Button variant="link" className="p-0" onClick={() => router.push('/signup')}>
+                  Sign up
+                </Button>
+              </p>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground">
+                Contact administrator for doctor registration
+              </p>
+            )}
+          </CardFooter>
+        </Tabs>
       </Card>
     </div>
   );

@@ -8,12 +8,28 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function DoctorDashboard({ pendingQueries, handleApproveQuery, handleRejectQuery }) {
   const [selectedQuery, setSelectedQuery] = useState(null);
+  const [notes, setNotes] = useState('');
+
+  const getBadgeVariant = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'secondary';
+      case 'approved':
+        return 'success';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Card className="lg:col-span-1 overflow-hidden">
         <CardHeader className="bg-primary/5 border-b">
-          <CardTitle className="text-lg font-medium">Pending Patient Queries</CardTitle>
+          <CardTitle className="text-lg font-medium">
+            <span className="gradient-text">Pending Patient Queries</span>
+          </CardTitle>
         </CardHeader>
         <div className="overflow-y-auto h-[calc(70vh-4rem)]">
           {pendingQueries.length === 0 ? (
@@ -25,24 +41,28 @@ export default function DoctorDashboard({ pendingQueries, handleApproveQuery, ha
               {pendingQueries.map(query => (
                 <li
                   key={query.id}
-                  className={`p-4 cursor-pointer hover:bg-muted/50 ${selectedQuery?.id === query.id ? 'bg-primary/5' : ''} ${
-                    query.status === 'approved' ? 'bg-green-50' : 
-                    query.status === 'rejected' ? 'bg-red-50' : ''
+                  onClick={() => {
+                    setSelectedQuery(query);
+                    setNotes('');
+                  }}
+                  className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
+                    selectedQuery?.id === query.id ? 'bg-primary/5' : ''
                   }`}
-                  onClick={() => setSelectedQuery(query)}
                 >
-                  <div className="flex justify-between">
-                    <h3 className="font-medium text-foreground">{query.patientName}</h3>
-                    <Badge variant={
-                      query.status === 'pending' ? 'secondary' : 
-                      query.status === 'approved' ? 'success' : 'destructive'
-                    }>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-medium text-foreground">{query.patientName}</h3>
+                      <p className="text-sm text-muted-foreground truncate mt-1">
+                        {query.query}
+                      </p>
+                    </div>
+                    <Badge variant={getBadgeVariant(query.status)} className="ml-2">
                       {query.status.charAt(0).toUpperCase() + query.status.slice(1)}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground truncate">
-                    {query.query}
-                  </p>
+                  {query.isUrgent && (
+                    <Badge variant="destructive" className="mt-2">Urgent</Badge>
+                  )}
                 </li>
               ))}
             </ul>
@@ -54,9 +74,14 @@ export default function DoctorDashboard({ pendingQueries, handleApproveQuery, ha
         {selectedQuery ? (
           <div className="h-[70vh] flex flex-col">
             <CardHeader className="bg-primary/5 border-b flex flex-row justify-between items-center">
-              <CardTitle className="text-lg font-medium">
-                Patient: {selectedQuery.patientName}
-              </CardTitle>
+              <div>
+                <CardTitle className="text-lg font-medium gradient-text">
+                  Patient: {selectedQuery.patientName}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Submitted {new Date(selectedQuery.timestamp).toLocaleString()}
+                </p>
+              </div>
               <div className="flex space-x-2">
                 {selectedQuery.status === 'pending' && (
                   <>
@@ -64,6 +89,7 @@ export default function DoctorDashboard({ pendingQueries, handleApproveQuery, ha
                       onClick={() => handleApproveQuery(selectedQuery.id)}
                       variant="default"
                       size="sm"
+                      className="bg-success hover:bg-success/90"
                     >
                       Approve
                     </Button>
@@ -97,8 +123,10 @@ export default function DoctorDashboard({ pendingQueries, handleApproveQuery, ha
               {(selectedQuery.status === 'approved' || selectedQuery.status === 'rejected') && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Your Decision</h3>
-                  <div className={`p-4 rounded-lg ${selectedQuery.status === 'approved' ? 'bg-green-50' : 'bg-red-50'}`}>
-                    <p className="font-medium">
+                  <div className={`p-4 rounded-lg ${
+                    selectedQuery.status === 'approved' ? 'bg-success/10' : 'bg-destructive/10'
+                  }`}>
+                    <p className="font-medium text-foreground">
                       {selectedQuery.status === 'approved' 
                         ? 'You approved this AI response' 
                         : 'You rejected this AI response'}
@@ -110,8 +138,9 @@ export default function DoctorDashboard({ pendingQueries, handleApproveQuery, ha
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Add Notes (Optional)</h3>
                 <Textarea
-                  className="w-full"
-                  rows="3"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full min-h-[100px]"
                   placeholder="Add any additional notes or modifications to the AI response..."
                 />
               </div>
