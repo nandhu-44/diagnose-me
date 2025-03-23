@@ -3,7 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 llm = ChatGoogleGenerativeAI(
 model="models/gemini-1.5-flash",
-google_api_key="AIzaSyD2nLQBuG7fKoUtn3DDxM-6hs1sYAh4-EA",
+google_api_key="",
 )
 
 query = "I have influenza with fever, what medicine shall I use"
