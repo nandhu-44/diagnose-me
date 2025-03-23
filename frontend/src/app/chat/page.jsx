@@ -109,7 +109,7 @@ export default function ChatPage() {
       }
 
       // Then connect to Python backend for AI response with user data
-      const pythonResponse = await fetch(`${process.env.BACKEND_URL || "https://localhost:5000"}/process`, {
+      const pythonResponse = await fetch(`${process.env.BACKEND_URL || "http://localhost:5000"}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

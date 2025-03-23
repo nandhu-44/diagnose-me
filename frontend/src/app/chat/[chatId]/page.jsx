@@ -104,7 +104,7 @@ export default function ChatPage({ params }) {
     
     try {
       // Connect directly to Python backend first
-      const pythonResponse = await fetch(`${process.env.BACKEND_URL || "https://localhost:5000"}/process`, {
+      const pythonResponse = await fetch(`${process.env.BACKEND_URL || "http://localhost:5000"}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
