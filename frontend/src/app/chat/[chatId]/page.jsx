@@ -7,6 +7,7 @@ import PatientChat from '@/components/PatientChat';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toaster, toast } from 'sonner';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ChatPage({ params }) {
   const [userType, setUserType] = useState(null);
@@ -185,6 +186,10 @@ export default function ChatPage({ params }) {
     setShowSidebar(!showSidebar);
   };
 
+  const toggleSidebarPosition = () => {
+    setShowSidebar((prev) => !prev);
+  };
+
   if (!userType) return null;
 
   return (
@@ -195,7 +200,7 @@ export default function ChatPage({ params }) {
       <div className="flex h-[calc(100vh-3.6rem)]">
         {/* Sidebar */}
         {showSidebar && userType === 'patient' && (
-          <div className="w-64 bg-gray-900 border-r border-gray-800 overflow-y-auto">
+          <div className="w-64 bg-gray-900 border-r border-gray-800 overflow-y-auto transition-transform duration-300 ease-in-out transform translate-x-0">
             <div className="p-4">
               <h2 className="text-lg font-semibold text-center text-gray-100 mb-4">Your Chats</h2>
               {chats.length === 0 ? (
@@ -218,17 +223,17 @@ export default function ChatPage({ params }) {
               )}
             </div>
           </div>
-        )} {/* Closing conditional rendering for the sidebar */}
+        )}
 
         {/* Main Content */}
         <main className="flex-1">
           <div className="h-full relative">
             <Button
               variant="ghost"
-              className="absolute top-4 left-4 z-10"
-              onClick={toggleSidebar}
+              className="absolute top-4 left-4 z-50 bg-gray-700 text-white rounded-full p-3 shadow-lg"
+              onClick={toggleSidebarPosition}
             >
-              {showSidebar ? '←' : '→'}
+              {showSidebar ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
             </Button>
 
             <PatientChat

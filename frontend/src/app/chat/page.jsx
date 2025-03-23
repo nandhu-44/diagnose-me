@@ -8,6 +8,7 @@ import PatientChat from '@/components/PatientChat';
 import DoctorDashboard from '@/components/DoctorDashboard';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ChatPage() {
   const [userType, setUserType] = useState(null);
@@ -71,11 +72,11 @@ export default function ChatPage() {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
-    
+
     const messageContent = inputValue;
     setInputValue('');
     setIsLoading(true);
-    
+
     try {
       const token = localStorage.getItem('token');
       console.log('[Frontend] Creating new chat with message:', messageContent);
@@ -170,6 +171,10 @@ export default function ChatPage() {
     setShowSidebar(!showSidebar);
   };
 
+  const toggleSidebarPosition = () => {
+    setShowSidebar((prev) => !prev);
+  };
+
   if (!userType) return null;
 
   return (
@@ -178,9 +183,8 @@ export default function ChatPage() {
       <Header userType={userType} handleLogout={handleLogout} />
       
       <div className="flex h-[calc(100vh-3.6rem)]">
-        {/* Sidebar */}
         {showSidebar && userType === 'patient' && (
-          <div className="w-64 bg-gray-900 border-r border-gray-800 overflow-y-auto">
+          <div className="w-64 bg-gray-900 border-r border-gray-800 overflow-y-auto transition-transform duration-300 ease-in-out transform translate-x-0">
             <div className="p-4">
               <h2 className="text-lg font-semibold text-center text-gray-100 mb-4">Your Chats</h2>
               {chats.length === 0 ? (
@@ -203,48 +207,43 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Main Content */}
         <main className="flex-1">
           <div className="h-full relative">
-            {userType === 'patient' && (
-              <>
-                <Button
-                  variant="ghost"
-                  className="absolute top-4 left-4 z-10"
-                  onClick={toggleSidebar}
-                >
-                  {showSidebar ? '←' : '→'}
-                </Button>
+            <Button
+              variant="ghost"
+              className="absolute top-4 left-4 z-50 bg-gray-700 text-white rounded-full py-3 px-3 shadow-lg"
+              onClick={toggleSidebarPosition}
+            >
+              {showSidebar ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+            </Button>
 
-                <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
-                  <div className="flex flex-col h-[calc(100vh-3.6rem)]">
-                    <div className="p-4 mt-auto border-t border-gray-800">
-                      <form onSubmit={handleSendMessage} className="flex gap-2">
-                        <input
-                          type="text"
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          placeholder="Describe your symptoms..."
-                          className="flex-1 bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-400 rounded px-3 py-2"
-                          disabled={isLoading}
-                        />
-                        <Button 
-                          type="submit" 
-                          disabled={isLoading}
-                          className="bg-blue-600 hover:bg-blue-700 text-gray-100"
-                        >
-                          {isLoading ? 'Creating...' : 'Start Chat'}
-                        </Button>
-                      </form>
-                      <p className="text-xs text-gray-400 mt-2 text-center">
-                        Note: This is not a substitute for professional medical advice. 
-                        In case of emergency, please contact your healthcare provider immediately.
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </>
-            )}
+            <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
+              <div className="flex flex-col h-[calc(100vh-3.6rem)]">
+                <div className="p-4 mt-auto border-t border-gray-800">
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder="Describe your symptoms..."
+                      className="flex-1 bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-400 rounded px-3 py-2"
+                      disabled={isLoading}
+                    />
+                    <Button 
+                      type="submit" 
+                      disabled={isLoading}
+                      className="bg-blue-600 hover:bg-blue-700 text-gray-100"
+                    >
+                      {isLoading ? 'Creating...' : 'Start Chat'}
+                    </Button>
+                  </form>
+                  <p className="text-xs text-gray-400 mt-2 text-center">
+                    Note: This is not a substitute for professional medical advice. 
+                    In case of emergency, please contact your healthcare provider immediately.
+                  </p>
+                </div>
+              </div>
+            </Card>
           </div>
         </main>
       </div>
