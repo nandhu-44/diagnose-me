@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import MongoConnect from '@/lib/MongoConnect';
 import Patient from '@/models/Patient';
 import Doctor from '@/models/Doctor';
-
-const JWT_SECRET = process.env.JWT_SECRET
+import { sign } from '@/lib/auth';
 
 export async function POST(req) {
   try {
@@ -32,20 +30,21 @@ export async function POST(req) {
       );
     }
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        userType,
-        username: user.username
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const token = await sign({
+      userId: user._id.toString(),
+      userType,
+      username: user.username
+    });
 
-    const userData = user.toJSON();
-    delete userData.password;
+    const userData = {
+      id: user._id.toString(),
+      username: user.username,
+      userType,
+      fullName: user.fullName
+    };
 
     return NextResponse.json({
+      success: true,
       message: 'Login successful',
       user: userData,
       token
@@ -53,7 +52,7 @@ export async function POST(req) {
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { message: 'An error occurred during login' },
+      { success: false, message: 'An error occurred during login' },
       { status: 500 }
     );
   }

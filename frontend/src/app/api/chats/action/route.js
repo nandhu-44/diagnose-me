@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import MongoConnect from '@/lib/MongoConnect';
-import { getServerAuthSession } from '@/lib/auth';
 import Chat from '@/models/Chat';
 
 export async function POST(req) {
   try {
-    const session = await getServerAuthSession();
-    if (!session || session.userType !== 'patient') {
+    const token = req.headers.get('Authorization')?.split(' ')[1];
+    
+    if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+    
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const userId = payload.userId;
 
     await MongoConnect();
     const { chatId, action } = await req.json();
@@ -18,7 +21,7 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Chat not found' }, { status: 404 });
     }
 
-    if (chat.patientId.toString() !== session.userId) {
+    if (chat.patientId.toString() !== userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -35,15 +38,13 @@ export async function POST(req) {
     await chat.save();
 
     return NextResponse.json({
-      message: action === 'accept' 
-        ? 'Response accepted and saved'
-        : 'Query sent for doctor review',
-      status: chat.status
+      message: `Chat ${action === 'accept' ? 'accepted' : 'sent for review'} successfully`,
+      chat
     });
   } catch (error) {
-    console.error('Error processing patient action:', error);
+    console.error('Error updating chat:', error);
     return NextResponse.json(
-      { message: 'An error occurred while processing your action' },
+      { message: 'An error occurred while updating chat' },
       { status: 500 }
     );
   }

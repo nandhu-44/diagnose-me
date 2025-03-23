@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Image from 'next/image';
@@ -9,17 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [userType, setUserType] = useState('patient');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data) => {
     try {
+      setIsLoading(true);
+      setError('');
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -32,17 +36,25 @@ export default function LoginPage() {
       });
 
       const result = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('userType', userType);
-        localStorage.setItem('isLoggedIn', 'true');
+      
+      if (response.ok && result.success && result.token) {
+        // Store auth data in localStorage
         localStorage.setItem('token', result.token);
-        router.push('/chat');
+        localStorage.setItem('userType', result.user.userType);
+        localStorage.setItem('userId', result.user.id);
+        localStorage.setItem('username', result.user.username);
+        localStorage.setItem('fullName', result.user.fullName);
+        
+        // Use router.replace to prevent going back to login
+        router.replace('/chat');
       } else {
         setError(result.message || 'Invalid credentials. Please try again.');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -70,7 +82,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <Card className="w-full max-w-md shadow-lg border-primary/10">
+      <Card className="w-full max-w-xl px-3 h-full shadow-lg border-primary/10">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
           <CardDescription className="text-center">
@@ -81,7 +93,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <Tabs value={userType} onValueChange={setUserType} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-4 gap-x-2">
             <TabsTrigger value="patient" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Patient Login
             </TabsTrigger>
@@ -105,6 +117,7 @@ export default function LoginPage() {
                   {...register("username", { required: "Username is required" })}
                   placeholder={`Enter your username`}
                   className="bg-background"
+                  disabled={isLoading}
                 />
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username.message}</p>
@@ -119,14 +132,15 @@ export default function LoginPage() {
                   {...register("password", { required: "Password is required" })}
                   placeholder="Enter your password"
                   className="bg-background"
+                  disabled={isLoading}
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password.message}</p>
                 )}
               </div>
               
-              <Button type="submit" className="w-full">
-                Sign in
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
           </CardContent>
@@ -135,7 +149,7 @@ export default function LoginPage() {
             {userType === 'patient' ? (
               <p className="text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Button variant="link" className="p-0" onClick={() => router.push('/signup')}>
+                <Button variant="link" className="p-0 h-0" onClick={() => router.push('/signup')} disabled={isLoading}>
                   Sign up
                 </Button>
               </p>

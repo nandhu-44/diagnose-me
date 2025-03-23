@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import Doctor from '@/models/Doctor';
-import { verify } from '@/lib/auth';
 import MongoConnect from '@/lib/MongoConnect';
 
 export async function POST(req) {
@@ -11,13 +10,9 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
     }
 
-    try {
-      const decoded = await verify(token);
-      if (decoded.userType !== 'admin') {
-        return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
-      }
-    } catch (error) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.userType !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
     }
 
     const {

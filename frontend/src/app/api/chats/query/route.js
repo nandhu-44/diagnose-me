@@ -1,57 +1,101 @@
 import { NextResponse } from 'next/server';
 import MongoConnect from '@/lib/MongoConnect';
-import { getServerAuthSession } from '@/lib/auth';
 import Chat from '@/models/Chat';
 
 export async function POST(req) {
   try {
-    const session = await getServerAuthSession();
-    if (!session) {
+    const token = req.headers.get('Authorization')?.split(' ')[1];
+    
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const userId = payload.userId;
+
+    await MongoConnect();
+    const { query, chatId } = await req.json();
+
+    if (!query?.trim()) {
+      return NextResponse.json(
+        { message: 'Query cannot be empty' },
+        { status: 400 }
+      );
+    }
+
+    let chat;
+    if (chatId) {
+      // Add message to existing chat
+      chat = await Chat.findById(chatId);
+      if (!chat) {
+        return NextResponse.json({ message: 'Chat not found' }, { status: 404 });
+      }
+      if (chat.patientId.toString() !== userId) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+
+      chat.messages.push({
+        role: 'user',
+        content: query,
+        timestamp: new Date()
+      });
+
+      await chat.save();
+    } else {
+      // Create new chat
+      chat = new Chat({
+        patientId: userId,
+        currentSymptoms: query,
+        messages: [
+          {
+            role: 'user',
+            content: query,
+            timestamp: new Date()
+          }
+        ]
+      });
+
+      await chat.save();
+    }
+    
+    return NextResponse.json({ 
+      message: chatId ? 'Message added successfully' : 'Chat created successfully',
+      chatId: chat._id 
+    });
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    return NextResponse.json(
+      { message: 'An error occurred while creating chat' },
+      { status: 500 }
+    );
+  }
+}
+
+// Get chat messages
+export async function GET(req, { params }) {
+  try {
+    const token = req.headers.get('Authorization')?.split(' ')[1];
+    if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const chatId = params.chatId;
+    if (!chatId) {
+      return NextResponse.json({ message: 'Chat ID is required' }, { status: 400 });
+    }
+
     await MongoConnect();
-    const { query } = await req.json();
-
-    const chat = new Chat({
-      patientId: session.userId,
-      currentSymptoms: query,
-      messages: [
-        {
-          role: 'user',
-          content: query,
-          timestamp: new Date()
-        }
-      ],
-      aiModel: 'gpt-4o',
-      status: 'pending'
-    });
+    const chat = await Chat.findById(chatId);
     
+    if (!chat) {
+      return NextResponse.json({ message: 'Chat not found' }, { status: 404 });
+    }
 
-    const mockAIResponse = {
-      diagnosis: 'Based on your symptoms, this could be a common condition.',
-      confidence: 0.85,
-      recommendations: 'Rest and stay hydrated. Monitor your symptoms.',
-      warnings: 'Seek immediate medical attention if symptoms worsen.'
-    };
-
-    chat.messages.push({
-      role: 'assistant',
-      content: `${mockAIResponse.diagnosis}\n\n${mockAIResponse.recommendations}\n\nWarning: ${mockAIResponse.warnings}`,
-      timestamp: new Date()
-    });
-
-    chat.aiResponse = mockAIResponse;
-    await chat.save();
-
-    return NextResponse.json({
-      response: chat.messages[chat.messages.length - 1].content,
-      chatId: chat._id
-    });
+    return NextResponse.json({ chat });
   } catch (error) {
-    console.error('Chat query error:', error);
+    console.error('Error fetching chat:', error);
     return NextResponse.json(
-      { message: 'An error occurred while processing your query' },
+      { message: 'An error occurred while fetching chat' },
       { status: 500 }
     );
   }

@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import MongoConnect from '@/lib/MongoConnect';
 import Patient from '@/models/Patient';
-import { setAuthCookie } from '@/lib/auth';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { sign } from '@/lib/auth';
 
 export async function POST(req) {
   try {
@@ -36,17 +33,11 @@ export async function POST(req) {
 
     await patient.save();
 
-    const token = jwt.sign(
-      {
-        userId: patient._id,
-        userType: 'patient',
-        username: patient.username
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    setAuthCookie(token);
+    const token = await sign({
+      userId: patient._id.toString(),
+      userType: 'patient',
+      username: patient.username
+    });
 
     const patientData = patient.toJSON();
     delete patientData.password;

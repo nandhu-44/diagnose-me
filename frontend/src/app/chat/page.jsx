@@ -1,91 +1,71 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { Toaster, toast } from 'sonner';
 import Header from '@/components/Header';
 import PatientChat from '@/components/PatientChat';
 import DoctorDashboard from '@/components/DoctorDashboard';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function ChatPage() {
   const [userType, setUserType] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [chats, setChats] = useState([]);
+  const [showSidebar, setShowSidebar] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingQueries, setPendingQueries] = useState([]);
-  const messagesEndRef = useRef(null);
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUserType = localStorage.getItem('userType');
-    
-    if (!token || !storedUserType) {
-      router.push('/');
-      return;
-    }
-    
-    setUserType(storedUserType);
-    
-    // Fetch initial data based on user type
-    if (storedUserType === 'patient') {
-      fetchPatientChats();
-    } else {
-      fetchPendingQueries();
-    }
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const storedUserType = localStorage.getItem('userType');
+        
+        if (!token || !storedUserType) {
+          console.log('[Auth] No token or userType found, redirecting to login');
+          await router.replace('/');
+          return;
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        
+        const response = await fetch('/api/chats/patient', { headers });
+        
+        if (!response.ok) {
+          console.log('[Auth] Invalid token, redirecting to login');
+          localStorage.clear();
+          await router.replace('/');
+          return;
+        }
+        
+        setUserType(storedUserType);
+        if (storedUserType === 'patient') {
+          const data = await response.json();
+          setChats(data.chats);
+        }
+      } catch (error) {
+        console.error('[Auth] Error checking auth:', error);
+        localStorage.clear();
+        await router.replace('/');
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
-  const fetchPatientChats = async () => {
+  const handleLogout = async () => {
     try {
-      const response = await fetch('/api/chats/patient', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.chats.length === 0) {
-          setMessages([{
-            id: Date.now(),
-            role: 'system',
-            content: 'Welcome to Diagnose Me! Please describe your symptoms in detail, and I\'ll provide health insights based on your medical history.'
-          }]);
-        } else {
-          setMessages(data.chats[0].messages); // Show most recent chat
-        }
-      }
+      localStorage.clear();
+      await router.replace('/');
     } catch (error) {
-      console.error('Error fetching chats:', error);
+      console.error('[Auth] Error during logout:', error);
+      window.location.href = '/';
     }
-  };
-
-  const fetchPendingQueries = async () => {
-    try {
-      const response = await fetch('/api/chats/doctor/pending', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPendingQueries(data.queries);
-      }
-    } catch (error) {
-      console.error('Error fetching pending queries:', error);
-    }
-  };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('isLoggedIn');
-    router.push('/');
   };
 
   const handleSendMessage = async (e) => {
@@ -94,149 +74,126 @@ export default function ChatPage() {
     
     const messageContent = inputValue;
     setInputValue('');
-    
-    setMessages(prev => [...prev, { 
-      id: Date.now(),
-      role: 'user',
-      content: messageContent
-    }]);
-    
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/chats/query', {
+      const token = localStorage.getItem('token');
+      console.log('[Frontend] Creating new chat with message:', messageContent);
+      const createResponse = await fetch('/api/chats/query', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ query: messageContent })
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          role: 'assistant',
-          content: data.response,
-          options: ['Use Now', 'Wait for Doctor']
-        }]);
-      } else {
-        throw new Error('Failed to get response');
+
+      const data = await createResponse.json();
+      console.log('[Frontend] Create chat response:', { status: createResponse.status, data });
+
+      if (!createResponse.ok) {
+        throw new Error(data.message || 'Failed to create chat');
       }
+
+      if (!data.chatId) {
+        throw new Error('No chat ID returned from server');
+      }
+
+      console.log('[Frontend] Chat created successfully, redirecting to:', `/chat/${data.chatId}`);
+      toast.success('Chat created successfully!');
+      router.push(`/chat/${data.chatId}`);
     } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        role: 'system',
-        content: 'Sorry, there was an error processing your request. Please try again.'
-      }]);
-    } finally {
+      console.error('[Frontend] Error creating chat:', error);
+      toast.error(error.message || 'Failed to create chat');
+      if (error.message === 'Invalid token') {
+        localStorage.clear();
+        router.replace('/');
+      }
       setIsLoading(false);
     }
   };
 
-  const handleOptionSelect = async (option) => {
-    try {
-      const response = await fetch('/api/chats/action', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          action: option === 'Use Now' ? 'accept' : 'review',
-          chatId: messages[messages.length - 2].id // Get the user's message ID
-        })
-      });
-      
-      if (response.ok) {
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          role: 'system',
-          content: option === 'Use Now' 
-            ? 'You have chosen to use this information now. The solution has been saved to your medical history.'
-            : 'Your query has been sent to a doctor for review. You will be notified when they respond.'
-        }]);
-      }
-    } catch (error) {
-      console.error('Error processing action:', error);
-    }
-  };
-
-  const handleApproveQuery = async (id) => {
-    try {
-      const response = await fetch(`/api/chats/doctor/review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          chatId: id,
-          action: 'approve'
-        })
-      });
-      
-      if (response.ok) {
-        setPendingQueries(queries => 
-          queries.map(q => q.id === id ? {...q, status: 'approved'} : q)
-        );
-      }
-    } catch (error) {
-      console.error('Error approving query:', error);
-    }
-  };
-
-  const handleRejectQuery = async (id) => {
-    try {
-      const response = await fetch(`/api/chats/doctor/review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          chatId: id,
-          action: 'reject'
-        })
-      });
-      
-      if (response.ok) {
-        setPendingQueries(queries => 
-          queries.map(q => q.id === id ? {...q, status: 'rejected'} : q)
-        );
-      }
-    } catch (error) {
-      console.error('Error rejecting query:', error);
-    }
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
   };
 
   if (!userType) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
+      <Toaster position="top-center" />
       <Header userType={userType} handleLogout={handleLogout} />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {userType === 'patient' ? (
-          <PatientChat 
-            messages={messages} 
-            isLoading={isLoading}
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            handleSendMessage={handleSendMessage}
-            handleOptionSelect={handleOptionSelect}
-            messagesEndRef={messagesEndRef}
-          />
-        ) : (
-          <DoctorDashboard
-            pendingQueries={pendingQueries}
-            handleApproveQuery={handleApproveQuery}
-            handleRejectQuery={handleRejectQuery}
-          />
+      
+      <div className="flex h-[calc(100vh-3.6rem)]">
+        {/* Sidebar */}
+        {showSidebar && userType === 'patient' && (
+          <div className="w-64 bg-gray-900 border-r border-gray-800 overflow-y-auto">
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-center text-gray-100 mb-4">Your Chats</h2>
+              {chats.length === 0 ? (
+                <p className="text-gray-400 text-xs text-center flex justify-center items-center">No chats yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {chats.map((chat) => (
+                    <Card 
+                      key={chat._id}
+                      className="p-3 bg-gray-800 hover:bg-gray-700 cursor-pointer"
+                      onClick={() => router.push(`/chat/${chat._id}`)}
+                    >
+                      <p className="text-sm text-gray-100 truncate">{chat.currentSymptoms}</p>
+                      <p className="text-xs text-gray-400">{new Date(chat.createdAt).toLocaleDateString()}</p>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </main>
+
+        {/* Main Content */}
+        <main className="flex-1">
+          <div className="h-full relative">
+            {userType === 'patient' && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="absolute top-4 left-4 z-10"
+                  onClick={toggleSidebar}
+                >
+                  {showSidebar ? '←' : '→'}
+                </Button>
+                <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
+                  <div className="flex flex-col h-[calc(100vh-3.6rem)]">
+                    <div className="p-4 mt-auto border-t border-gray-800">
+                      <form onSubmit={handleSendMessage} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          placeholder="Describe your symptoms..."
+                          className="flex-1 bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-400 rounded px-3 py-2"
+                          disabled={isLoading}
+                        />
+                        <Button 
+                          type="submit" 
+                          disabled={isLoading}
+                          className="bg-blue-600 hover:bg-blue-700 text-gray-100"
+                        >
+                          {isLoading ? 'Creating...' : 'Start Chat'}
+                        </Button>
+                      </form>
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                        Note: This is not a substitute for professional medical advice. 
+                        In case of emergency, please contact your healthcare provider immediately.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

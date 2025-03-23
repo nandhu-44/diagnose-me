@@ -1,34 +1,16 @@
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import { SignJWT } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-export async function verifyAuth(token) {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded;
-  } catch (error) {
-    throw new Error('Invalid token');
-  }
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined in environment variables');
 }
 
-export function getServerAuthSession() {
-  const token = cookies().get('token')?.value;
-  if (!token) return null;
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded;
-  } catch {
-    return null;
-  }
-}
+const encoder = new TextEncoder();
+const JWT_SECRET = encoder.encode(process.env.JWT_SECRET);
 
-export function setAuthCookie(token) {
-  cookies().set('token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
-    maxAge: 60 * 60 * 24
-  });
+export async function sign(payload) {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(JWT_SECRET);
 }
