@@ -30,18 +30,27 @@ export async function POST(req) {
       );
     }
 
+    const userData = {
+      userId: user._id,
+      username: user.username,
+      email: user.email,
+      userType,
+      fullName: user.fullName,
+      medicalHistory: userType === 'patient' ? {
+        history: user.medicalHistory,
+        allergies: user.allergies || [],
+        currentMedications: user.currentMedications || [],
+        chronicConditions: user.chronicConditions || [],
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender
+      } : null,
+    };
+
     const token = await sign({
       userId: user._id.toString(),
       userType,
       username: user.username
     });
-
-    const userData = {
-      id: user._id.toString(),
-      username: user.username,
-      userType,
-      fullName: user.fullName
-    };
 
     return NextResponse.json({
       success: true,

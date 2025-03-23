@@ -31,6 +31,27 @@ export default function LoginPage() {
     }
   }, [router]);
 
+  const storeUserData = (userData) => {
+    const fieldsToStore = {
+      token: userData.token,
+      userType: userData.user.userType,
+      userId: userData.user.userId,
+      username: userData.user.username,
+      fullName: userData.user.fullName,
+      email: userData.user.email,
+      medicalHistory: userData.user.medicalHistory || '',
+      dateOfBirth: userData.user.dateOfBirth || '',
+      gender: userData.user.gender || '',
+      allergies: JSON.stringify(userData.user.allergies || []),
+      currentMedications: JSON.stringify(userData.user.currentMedications || []),
+      chronicConditions: JSON.stringify(userData.user.chronicConditions || [])
+    };
+
+    Object.entries(fieldsToStore).forEach(([key, value]) => {
+      localStorage.setItem(key, value);
+    });
+  };
+
   const onSubmit = async (data) => {
     try {
       setIsLoading(true);
@@ -50,14 +71,7 @@ export default function LoginPage() {
       const result = await response.json();
       
       if (response.ok && result.success && result.token) {
-        // Store auth data in localStorage
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('userType', result.user.userType);
-        localStorage.setItem('userId', result.user.id);
-        localStorage.setItem('username', result.user.username);
-        localStorage.setItem('fullName', result.user.fullName);
-        
-        // Use router.replace to prevent going back to login
+        storeUserData(result);
         router.replace('/chat');
       } else {
         setError(result.message || 'Invalid credentials. Please try again.');

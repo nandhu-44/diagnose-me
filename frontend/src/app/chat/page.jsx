@@ -69,6 +69,17 @@ export default function ChatPage() {
     }
   };
 
+  const getMedicalContext = () => {
+    return {
+      medicalHistory: localStorage.getItem('medicalHistory') || '',
+      allergies: JSON.parse(localStorage.getItem('allergies') || '[]'),
+      currentMedications: JSON.parse(localStorage.getItem('currentMedications') || '[]'),
+      chronicConditions: JSON.parse(localStorage.getItem('chronicConditions') || '[]'),
+      dateOfBirth: localStorage.getItem('dateOfBirth') || '',
+      gender: localStorage.getItem('gender') || ''
+    };
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -79,7 +90,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      console.log('[Frontend] Creating new chat with message:', messageContent);
+      const userData = getMedicalContext();
 
       // First create a new chat in MongoDB
       const createResponse = await fetch('/api/chats/query', {
@@ -92,23 +103,21 @@ export default function ChatPage() {
       });
 
       const data = await createResponse.json();
-      console.log('[Frontend] Create chat response:', { status: createResponse.status, data });
 
-      if (!createResponse.ok) {
+      if (!createResponse.ok || !data.chatId) {
         throw new Error(data.message || 'Failed to create chat');
       }
 
-      if (!data.chatId) {
-        throw new Error('No chat ID returned from server');
-      }
-
-      // Then connect to Python backend for AI response
+      // Then connect to Python backend for AI response with user data
       const pythonResponse = await fetch('http://localhost:5000/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: messageContent })
+        body: JSON.stringify({ 
+          prompt: messageContent,
+          userData: userData // Add user medical data
+        })
       });
 
       const reader = pythonResponse.body.getReader();
