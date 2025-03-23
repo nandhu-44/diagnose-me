@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask_cors import CORS, cross_origin
 import json
 import google.generativeai as genai
-from graphRAG.graph_query import GraphQuery
+from graphRAG.graph_query import graph_query  # Import the function directly
 from rag import query_db
 from datetime import datetime
 
@@ -17,9 +17,6 @@ CORS(app, supports_credentials=True, origins=["*"])
 api_key = os.getenv('GOOGLE_KEY')
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-pro')
-
-# Initialize GraphQuery instance
-graph_query = GraphQuery()
 
 def get_response(query, user_data=None):
     try:
@@ -57,9 +54,10 @@ def process():
             # Get AI response with user context
             response = get_response(query, user_data)
             
-            # Try graph query if available
+            # Try graph query if available using the function directly
             try:
-                graph_response = graph_query.graph_query(query)
+                result = graph_query(query)
+                graph_response = result.get('result', '')
                 if graph_response:
                     response += "\n\nAdditional Information from Medical Database:\n" + graph_response
             except Exception as e:
