@@ -14,14 +14,11 @@ def handle_document(doc_path):
     Returns:
         list: List of chunks with content and metadata
     """
-    # Extract the text from the document
     elements = partition(doc_path)
     chunks = chunk_elements(elements, max_characters=512, overlap=50)
     
-    # Generate a unique document ID
     doc_id = hashlib.md5(Path(doc_path).read_bytes()).hexdigest()
     
-    # Format each chunk with the required metadata
     formatted_chunks = []
     for i, chunk in enumerate(chunks):
         formatted_chunks.append({

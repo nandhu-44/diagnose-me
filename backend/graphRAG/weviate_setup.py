@@ -14,16 +14,11 @@ google_key=os.environ["GOOGLE_KEY"]
 # Connect to Weaviate Cloud
 client = weaviate.connect_to_weaviate_cloud(
     cluster_url=weaviate_url,
-    auth_client_secret=AuthClientCredentials.api_key(weaviate_api_key),
+    auth_credentials=Auth.api_key(weaviate_api_key),
+    headers={
+        "X-Goog-Studio-Api-Key": google_key,
+    }
 )
-
-# client = weaviate.connect_to_weaviate_cloud(
-#     cluster_url=weaviate_url,
-#     auth_credentials=Auth.api_key(weaviate_api_key),
-#     headers={
-#         "X-Goog-Studio-Api-Key": google_key,
-#     }
-# )
 
 # class_obj = {
 #     # Class definition
