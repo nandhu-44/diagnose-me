@@ -35,10 +35,18 @@ const patientSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  allergies: {
+  allergies: [{
     type: String,
     default: ''
-  },
+  }],
+  currentMedications: [{
+    type: String,
+    default: ''
+  }],
+  chronicConditions: [{
+    type: String,
+    default: ''
+  }],
   createdAt: {
     type: Date,
     default: Date.now
