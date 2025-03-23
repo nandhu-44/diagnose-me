@@ -70,6 +70,7 @@ backend/
   ├── graphRAG/ (Graph-based entity relationship scripts)
   ├── rag/ (Vector database and retrieval components)
   ├── server.py (Flask backend API)
+  ├── combine_response.py (to compare both results and combine )
   ├── requirements.txt (Dependencies)
 
 frontend/
@@ -77,6 +78,7 @@ frontend/
   │   ├── app/ (Pages and API routes)
   │   ├── components/ (UI components)
   │   ├── lib/ (MongoDB and authentication utilities)
+  │   ├── models/
   ├── package.json (Frontend dependencies)
 ```
 
@@ -104,8 +106,8 @@ frontend/
    ```
 
 ## Future Improvements
-- Enhance the graph-based reasoning with additional medical knowledge sources.
+- Enhance the graph-based reasoning with additional medical knowledge sources and improved cyphertext creation from natural language.
 - Improve user experience with real-time chat and multilingual support.
 - Optimize FAISS indexing for faster vector retrieval.
--Add option to to improve knowledge from previous chats
+- Add option to to improve knowledge from previous chats.
 
