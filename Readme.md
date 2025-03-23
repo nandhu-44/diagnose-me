@@ -27,6 +27,7 @@ Diagnose-Me is a GraphRAG-based medical diagnosis system that integrates graph-b
 ### GraphRAG
 - Implemented using `llmgraphtransformer` in turning natural language into entity relations which uploads data to Neo4j.
 - Graph relationships improve diagnosis accuracy by structuring medical knowledge.
+- Dataset used mimi_ex(https://huggingface.co/datasets/morson/mimic_ex)
 
 ### RAG with FAISS
 - Medical texts are chunked with overlap and indexed in FAISS for similarity comparison.
