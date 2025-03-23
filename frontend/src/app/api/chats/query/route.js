@@ -5,11 +5,11 @@ import Chat from '@/models/Chat';
 export async function POST(req) {
   try {
     const token = req.headers.get('Authorization')?.split(' ')[1];
-    
+
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = JSON.parse(atob(token.split('.')[1]));
     const userId = payload.userId;
 
@@ -39,25 +39,17 @@ export async function POST(req) {
         content: query,
         timestamp: new Date()
       });
-
-      await chat.save();
     } else {
-      // Create new chat
+      // Create new chat with only one user message
       chat = new Chat({
         patientId: userId,
         currentSymptoms: query,
-        messages: [
-          {
-            role: 'user',
-            content: query,
-            timestamp: new Date()
-          }
-        ]
+        messages: [] // Start with an empty message array
       });
 
       await chat.save();
     }
-    
+
     return NextResponse.json({ 
       message: chatId ? 'Message added successfully' : 'Chat created successfully',
       chatId: chat._id 

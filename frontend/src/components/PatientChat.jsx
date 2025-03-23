@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { Edit2Icon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function PatientChat({ 
   messages, 
@@ -17,12 +19,21 @@ export default function PatientChat({
   handleSendMessage,
   messagesEndRef 
 }) {
+  const router = useRouter();
   return (
     <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
       <CardHeader className="bg-gray-800/50 border-b border-gray-800">
         <CardTitle className="text-lg font-medium text-gray-100 text-center">
           Chat with AI Health Assistant
         </CardTitle>
+        <Button
+          variant="ghost"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-100"
+          onClick={() => router.push('/chat')}
+        >
+          <Edit2Icon className="h-5 w-5" />
+        </Button>
+
       </CardHeader>
 
       <div className="flex flex-col h-[calc(100vh-8.5rem)] bg-gray-900">
