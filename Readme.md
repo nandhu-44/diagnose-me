@@ -39,6 +39,7 @@ Diagnose-Me is a GraphRAG-based medical diagnosis system that integrates graph-b
 - The processed response can be approved and edited by doctor for further use
 
 ## Basic Workflow
+```
                    User Query
                        │
            ┌───────────┴───────────┐
@@ -61,6 +62,7 @@ Diagnose-Me is a GraphRAG-based medical diagnosis system that integrates graph-b
                        │
                        ▼
           MongoDB (Chat History Storage)
+```
 
 ## Folder Structure
 ```
