@@ -18,26 +18,108 @@ api_key = os.getenv('GOOGLE_KEY')
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-pro')
 
+def get_medical_context(user_data):
+    age = calculate_age(user_data.get('dateOfBirth', ''))
+    gender = user_data.get('gender', '')
+    history = user_data.get('medicalHistory', '')
+    meds = user_data.get('currentMedications', [])
+    allergies = user_data.get('allergies', [])
+    conditions = user_data.get('chronicConditions', [])
+    
+    return f"""
+    Based on the following patient profile:
+    - Age: {age}
+    - Gender: {gender}
+    - Chronic Conditions: {', '.join(conditions)}
+    - Current Medications: {', '.join(meds)}
+    - Known Allergies: {', '.join(allergies)}
+    - Medical History: {history}
+    """
+
 def get_response(query, user_data=None):
     try:
-        # Format the medical context
-        medical_context = f"""
-        Patient Context:
-        - Age: {calculate_age(user_data.get('dateOfBirth', ''))}
-        - Gender: {user_data.get('gender', '')}
-        - Medical History: {user_data.get('medicalHistory', '')}
-        - Current Medications: {', '.join(user_data.get('currentMedications', []))}
-        - Allergies: {', '.join(user_data.get('allergies', []))}
-        - Chronic Conditions: {', '.join(user_data.get('chronicConditions', []))}
-
-        Patient Query: {query}
-        """
+        # Get responses from both knowledge sources
+        sources_response = ""
         
-        response = model.generate_content(medical_context)
+        # Get Graph Database response first
+        try:
+            graph_data = graph_query(query)
+            if graph_data and graph_data["result"]:
+                sources_response += "\nFrom Medical Knowledge Graph:\n" + graph_data["result"]
+        except Exception as e:
+            print(f"Graph query error: {str(e)}")
+
+        # Get Vector DB (RAG) response
+        try:
+            rag_result = query_db.query(query)
+            if rag_result:
+                sources_response += "\nFrom Similar Cases:\n" + str(rag_result)
+        except Exception as e:
+            print(f"RAG query error: {str(e)}")
+
+        # Format complete context for AI
+        full_context = f"""
+        {get_medical_context(user_data)}
+        
+        Patient Query: {query}
+
+        Knowledge Base Information:
+        {sources_response}
+
+        Instructions:
+        Based on the patient's profile and the medical knowledge provided:
+        1. Prioritize information relevant to the patient's specific conditions
+        2. Consider potential interactions with current medications
+        3. Account for any allergies in recommendations
+        4. Use the knowledge base to support your response
+        """
+        # Generate response from AI model
+        response = model.generate_content(full_context)
         return response.text if response and hasattr(response, 'text') else "No response generated."
     except Exception as e:
         print(f"Error generating response: {str(e)}")
         return f"An error occurred: {str(e)}"
+
+def process_markdown(text):
+    """Process markdown text into properly formatted chunks"""
+    chunks = []
+    current_section = []
+    
+    for line in text.split('\n'):
+        # Start new section for headers
+        if line.startswith('#'):
+            if current_section:
+                chunks.append('\n'.join(current_section))
+                current_section = []
+            current_section.append(line)
+        
+        # Group list items together
+        elif line.strip().startswith(('-', '*', '1.')) and current_section and not current_section[-1].strip().startswith(('-', '*', '1.')):
+            if current_section:
+                chunks.append('\n'.join(current_section))
+                current_section = []
+            current_section.append(line)
+        
+        # Keep list items together
+        elif line.strip().startswith(('-', '*', '1.')):
+            current_section.append(line)
+        
+        # Regular paragraph text
+        else:
+            if current_section and current_section[-1].strip().startswith(('-', '*', '1.')):
+                chunks.append('\n'.join(current_section))
+                current_section = []
+            current_section.append(line)
+
+        # Split long sections
+        if len(current_section) > 5:
+            chunks.append('\n'.join(current_section))
+            current_section = []
+    
+    if current_section:
+        chunks.append('\n'.join(current_section))
+    
+    return [chunk.strip() for chunk in chunks if chunk.strip()]
 
 @app.route('/process', methods=['POST', 'OPTIONS'])
 @cross_origin()
@@ -51,38 +133,16 @@ def process():
 
     def generate():
         try:
-            # Get AI response with user context
+            # Get unified response
             response = get_response(query, user_data)
             
-            # Try graph query if available using the function directly
-            try:
-                result = graph_query(query)
-                graph_response = result.get('result', '')
-                if graph_response:
-                    response += "\n\nAdditional Information from Medical Database:\n" + graph_response
-            except Exception as e:
-                print(f"Graph query error: {str(e)}")
-
-            # Improved streaming that preserves markdown
-            # Split by sentences or markdown elements while preserving structure
-            chunks = []
-            current_chunk = []
-            lines = response.split('\n')
+            # Process into markdown-aware chunks
+            chunks = process_markdown(response)
             
-            for line in lines:
-                if line.strip():  # Skip empty lines
-                    if line.startswith(('#', '-', '*', '1.')) or len(current_chunk) > 50:
-                        if current_chunk:
-                            chunks.append(' '.join(current_chunk))
-                            current_chunk = []
-                    current_chunk.append(line)
-            
-            if current_chunk:
-                chunks.append(' '.join(current_chunk))
-
-            # Stream chunks with proper formatting
+            # Stream each chunk with proper formatting
             for chunk in chunks:
-                yield f"data: {json.dumps({'chunk': chunk + '\n'})}\n\n"
+                chunk_data = {'chunk': chunk + '\n\n'}
+                yield f"data: {json.dumps(chunk_data)}\n\n"
                 
         except Exception as e:
             print(f"Error: {str(e)}")
