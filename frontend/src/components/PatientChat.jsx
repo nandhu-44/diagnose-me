@@ -20,7 +20,7 @@ export default function PatientChat({
   return (
     <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
       <CardHeader className="bg-gray-800/50 border-b border-gray-800">
-        <CardTitle className="text-lg font-medium text-gray-100">
+        <CardTitle className="text-lg font-medium text-gray-100 text-center">
           Chat with AI Health Assistant
         </CardTitle>
       </CardHeader>
