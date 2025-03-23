@@ -3,11 +3,26 @@ import { headers } from 'next/headers';
 import MongoConnect from '@/lib/MongoConnect';
 import Chat from '@/models/Chat';
 
+async function connectWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response;
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+    }
+  }
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
     
-    const response = await fetch('http://localhost:5000/process', {
+    const response = await connectWithRetry('http://localhost:5000/process', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -16,19 +31,14 @@ export async function POST(req) {
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to get response from AI');
-    }
-
     return NextResponse.json({
       message: data.response
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in chat stream:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Failed to connect to AI service. Please try again." },
       { status: 500 }
     );
   }
@@ -69,9 +79,9 @@ export async function GET(req) {
       throw new Error('No user message found');
     }
 
-    // Connect to Python backend for AI response
+    // Connect to Python backend for AI response with retry mechanism
     const pythonBackendUrl = 'http://localhost:5000/process';
-    const response = await fetch(pythonBackendUrl, {
+    const response = await connectWithRetry(pythonBackendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,10 +90,6 @@ export async function GET(req) {
         prompt: lastMessage.content,
       }),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to get AI response');
-    }
 
     // Process the streaming response from Python backend
     const reader = response.body.getReader();
@@ -109,7 +115,7 @@ export async function GET(req) {
       }
     }
 
-    // Send end event and save the complete response
+    // Send end event
     await sendData({ done: true });
   } catch (error) {
     console.error('Error in chat stream:', error);

@@ -79,6 +79,8 @@ export default function ChatPage() {
     try {
       const token = localStorage.getItem('token');
       console.log('[Frontend] Creating new chat with message:', messageContent);
+
+      // First create a new chat in MongoDB
       const createResponse = await fetch('/api/chats/query', {
         method: 'POST',
         headers: {
@@ -97,6 +99,57 @@ export default function ChatPage() {
 
       if (!data.chatId) {
         throw new Error('No chat ID returned from server');
+      }
+
+      // Then connect to Python backend for AI response
+      const pythonResponse = await fetch('http://localhost:5000/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: messageContent })
+      });
+
+      const reader = pythonResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.chunk) {
+                fullResponse += data.chunk;
+              }
+            } catch (e) {
+              console.error('Error parsing JSON:', e);
+            }
+          }
+        }
+      }
+
+      // Update the chat with AI response
+      const updateResponse = await fetch(`/api/chats/query/${data.chatId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userMessage: messageContent,
+          aiResponse: fullResponse
+        })
+      });
+
+      if (!updateResponse.ok) {
+        console.error('Failed to update chat with AI response');
       }
 
       console.log('[Frontend] Chat created successfully, redirecting to:', `/chat/${data.chatId}`);
@@ -162,6 +215,7 @@ export default function ChatPage() {
                 >
                   {showSidebar ? '←' : '→'}
                 </Button>
+
                 <Card className="w-full h-full mx-auto rounded-none bg-gray-900 border-gray-800">
                   <div className="flex flex-col h-[calc(100vh-3.6rem)]">
                     <div className="p-4 mt-auto border-t border-gray-800">

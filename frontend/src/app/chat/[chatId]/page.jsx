@@ -102,62 +102,81 @@ export default function ChatPage({ params }) {
     setMessages(prev => [...prev, newMessage]);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/chats/query', {
+      // Connect directly to Python backend first
+      const pythonResponse = await fetch('http://localhost:5000/process', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: messageContent })
+      });
+
+      // Add initial assistant message
+      const assistantMessage = {
+        role: 'assistant',
+        content: '',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      const reader = pythonResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.chunk) {
+                fullResponse += data.chunk;
+                // Update the last message with new content
+                setMessages(prev => {
+                  const updatedMessages = [...prev];
+                  updatedMessages[updatedMessages.length - 1] = {
+                    ...updatedMessages[updatedMessages.length - 1],
+                    content: fullResponse
+                  };
+                  return updatedMessages;
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing JSON:', e);
+            }
+          }
+        }
+      }
+
+      // After getting full response, save to MongoDB
+      const token = localStorage.getItem('token');
+      const saveResponse = await fetch(`/api/chats/query/${params.chatId}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ query: messageContent, chatId: params.chatId })
+        body: JSON.stringify({
+          userMessage: messageContent,
+          aiResponse: fullResponse
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
+      if (!saveResponse.ok) {
+        console.error('Failed to save conversation to database');
       }
 
-      // Start SSE connection for AI response
-      const eventSource = new EventSource(`/api/chat?chatId=${params.chatId}`);
-      
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.chunk) {
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage?.role === 'assistant') {
-              // Append to existing assistant message
-              const updatedMessages = [...prev];
-              updatedMessages[updatedMessages.length - 1] = {
-                ...lastMessage,
-                content: lastMessage.content + data.chunk
-              };
-              return updatedMessages;
-            } else {
-              // Create new assistant message
-              return [...prev, {
-                role: 'assistant',
-                content: data.chunk,
-                timestamp: new Date()
-              }];
-            }
-          });
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE Error:', error);
-        eventSource.close();
-        setIsLoading(false);
-        toast.error('Failed to get AI response');
-      };
-
-      eventSource.addEventListener('end', () => {
-        eventSource.close();
-        setIsLoading(false);
-      });
     } catch (error) {
       console.error('[Chat] Error:', error);
       toast.error(error.message || 'Failed to send message');
+      // Remove the last message if it failed
+      setMessages(prev => prev.slice(0, -1));
+    } finally {
       setIsLoading(false);
     }
   };
@@ -199,7 +218,7 @@ export default function ChatPage({ params }) {
               )}
             </div>
           </div>
-        )}
+        )} {/* Closing conditional rendering for the sidebar */}
 
         {/* Main Content */}
         <main className="flex-1">
@@ -222,7 +241,7 @@ export default function ChatPage({ params }) {
             />
           </div>
         </main>
-      </div>
+      </div> {/* Closing div for the main container */}
     </div>
   );
 }

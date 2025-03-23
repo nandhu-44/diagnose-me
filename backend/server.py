@@ -8,7 +8,7 @@ import json
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["*"])
 
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY') )
 model = genai.GenerativeModel('gemini-2.0-flash', system_instruction="You are a medical diagnostic assistant. Provide accurate and concise medical information.")
