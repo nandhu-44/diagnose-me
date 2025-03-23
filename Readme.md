@@ -3,118 +3,6 @@
 ## Overview
 Diagnose-Me is a GraphRAG-based medical diagnosis system that integrates graph-based entity relationships with Retrieval-Augmented Generation (RAG) techniques. This project leverages a combination of Neo4j for knowledge graphs, FAISS for vector-based retrieval, and LLMs to generate accurate medical diagnoses based on user queries.
 
-### Folder Structure
-```
-📦 
-├─ .gitignore
-├─ Readme.md
-├─ backend
-│  ├─ combine_llm.py
-│  ├─ combine_response.py
-│  ├─ graphRAG
-│  │  ├─ add.py
-│  │  ├─ graph_query.py
-│  │  ├─ llm_response.py
-│  │  ├─ query.py
-│  │  ├─ query_test.py
-│  │  └─ weviate_setup.py
-│  ├─ rag
-│  │  ├─ add_data.py
-│  │  ├─ llm_response.py
-│  │  ├─ load_data.py
-│  │  ├─ query_db.py
-│  │  ├─ vector_db.py
-│  │  └─ vectorstore.pkl
-│  ├─ requirements.txt
-│  └─ server.py
-├─ frontend
-│  ├─ .gitignore
-│  ├─ README.md
-│  ├─ components.json
-│  ├─ jsconfig.json
-│  ├─ next.config.mjs
-│  ├─ package-lock.json
-│  ├─ package.json
-│  ├─ postcss.config.mjs
-│  ├─ public
-│  │  ├─ diagnose-me-logo.svg
-│  │  ├─ doctor.png
-│  │  └─ patient.png
-│  ├─ src
-│  │  ├─ app
-│  │  │  ├─ admin
-│  │  │  │  ├─ doctor-signup
-│  │  │  │  │  └─ page.jsx
-│  │  │  │  └─ success
-│  │  │  │     └─ page.jsx
-│  │  │  ├─ api
-│  │  │  │  ├─ auth
-│  │  │  │  │  ├─ doctor-signup
-│  │  │  │  │  │  └─ route.js
-│  │  │  │  │  ├─ get-profile
-│  │  │  │  │  │  └─ route.js
-│  │  │  │  │  ├─ login
-│  │  │  │  │  │  └─ route.js
-│  │  │  │  │  ├─ signup
-│  │  │  │  │  │  └─ route.js
-│  │  │  │  │  └─ update-profile
-│  │  │  │  │     └─ route.js
-│  │  │  │  ├─ chat
-│  │  │  │  │  └─ route.js.txt
-│  │  │  │  └─ chats
-│  │  │  │     ├─ action
-│  │  │  │     │  └─ route.js
-│  │  │  │     ├─ doctor
-│  │  │  │     │  ├─ pending
-│  │  │  │     │  │  └─ route.js
-│  │  │  │     │  └─ review
-│  │  │  │     │     └─ route.js
-│  │  │  │     ├─ patient
-│  │  │  │     │  └─ route.js
-│  │  │  │     └─ query
-│  │  │  │        ├─ [chatId]
-│  │  │  │        │  └─ route.js
-│  │  │  │        └─ route.js
-│  │  │  ├─ chat
-│  │  │  │  ├─ [chatId]
-│  │  │  │  │  └─ page.jsx
-│  │  │  │  └─ page.jsx
-│  │  │  ├─ globals.css
-│  │  │  ├─ layout.js
-│  │  │  ├─ page.jsx
-│  │  │  └─ signup
-│  │  │     └─ page.jsx
-│  │  ├─ components
-│  │  │  ├─ DoctorDashboard.jsx
-│  │  │  ├─ Header.jsx
-│  │  │  ├─ PatientChat.jsx
-│  │  │  └─ ui
-│  │  │     ├─ alert.jsx
-│  │  │     ├─ avatar.jsx
-│  │  │     ├─ badge.jsx
-│  │  │     ├─ button.jsx
-│  │  │     ├─ card.jsx
-│  │  │     ├─ dialog.jsx
-│  │  │     ├─ form.jsx
-│  │  │     ├─ input.jsx
-│  │  │     ├─ label.jsx
-│  │  │     ├─ select.jsx
-│  │  │     ├─ tabs.jsx
-│  │  │     ├─ textarea.jsx
-│  │  │     └─ tooltip.jsx
-│  │  ├─ lib
-│  │  │  ├─ MongoConnect.js
-│  │  │  ├─ auth.js
-│  │  │  └─ utils.js
-│  │  └─ models
-│  │     ├─ Chat.js
-│  │     ├─ Doctor.js
-│  │     └─ Patient.js
-│  └─ tailwind.config.js
-├─ graphrag.ipynb
-└─ sample_query.txt
-```
-
 ## Features
 - **GraphRAG Entity Relationship Mapping**: Utilizes a knowledge graph to structure medical entities and their relationships.
 - **RAG for Contextual Search**: Implements a chunking mechanism with overlap to store medical data in a FAISS vector database, allowing for accurate similarity comparisons.
@@ -182,6 +70,7 @@ backend/
   ├── graphRAG/ (Graph-based entity relationship scripts)
   ├── rag/ (Vector database and retrieval components)
   ├── server.py (Flask backend API)
+  ├── combine_response.py (to compare both results and combine )
   ├── requirements.txt (Dependencies)
 
 frontend/
@@ -189,6 +78,7 @@ frontend/
   │   ├── app/ (Pages and API routes)
   │   ├── components/ (UI components)
   │   ├── lib/ (MongoDB and authentication utilities)
+  │   ├── models/
   ├── package.json (Frontend dependencies)
 ```
 
@@ -216,8 +106,8 @@ frontend/
    ```
 
 ## Future Improvements
-- Enhance the graph-based reasoning with additional medical knowledge sources.
+- Enhance the graph-based reasoning with additional medical knowledge sources and improved cyphertext creation from natural language.
 - Improve user experience with real-time chat and multilingual support.
 - Optimize FAISS indexing for faster vector retrieval.
--Add option to to improve knowledge from previous chats
+- Add option to to improve knowledge from previous chats.
 
