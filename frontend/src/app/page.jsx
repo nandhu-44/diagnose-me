@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Image from 'next/image';
@@ -18,6 +18,18 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { register, handleSubmit, formState: { errors } } = useForm();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUserType = localStorage.getItem('userType');
+
+    if (token && storedUserType) {
+      console.log('[Auth] Token and userType found, redirecting to chat');
+      router.push('/chat');
+    } else {
+      console.log('[Auth] No token or userType found, staying on login page');
+    }
+  }, [router]);
 
   const onSubmit = async (data) => {
     try {
