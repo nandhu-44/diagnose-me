@@ -1,13 +1,20 @@
-import vector_db
-import llm_response
+import pickle
+from .llm_response import get_response
 
-def query(query: str, k: int = 3):
-    db = vector_db.VectorDatabase()
-    results = db.perform_similarity_search(query, k=k)
+def load_vector_db(pickle_path):
+    with open(pickle_path, 'rb') as f:
+        db = pickle.load(f)
+    return db
+
+def query(query_text, k=5):
+    pickle_path = "rag/vectorstore.pkl"
+    vector_db = load_vector_db(pickle_path)
+    results = vector_db.similarity_search(query_text, k=k)
     return results
 
-text="condition on discharge: upon discharge, the patient's condition was stable. follow up: the patient is to be followed up in three to four weeks. , m.d. dictated by: medquist36 Procedure: Single internal mammary-coronary artery bypass Extracorporeal circulation auxiliary to "
-q = query(text)
-print(q)
-response = llm_response.get_response(text,q)
-# print(response )
+
+# text = "I have heart disease, diabetes, and high blood pressure. My blood pressure dropped really low, I couldn't pee for a long time, and when I did, it was brown. They gave me fluids and some meds. Should I be worried? What could be wrong"
+# print(query(text))
+
+# response = get_response(text, q)
+# print(response)
