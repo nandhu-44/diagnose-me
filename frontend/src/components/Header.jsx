@@ -42,33 +42,33 @@ export default function Header({ userType, handleLogout }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Parse the medical history data properly
-    const storedUserName = localStorage.getItem('userName') || "";
-    const storedUserEmail = localStorage.getItem('email') || "";
-    const storedFullName = localStorage.getItem('fullName') || "";
-    const storedMedicalHistory = localStorage.getItem('medicalHistory');
-    const storedDateOfBirth = localStorage.getItem('dateOfBirth') || "";
-    const storedGender = localStorage.getItem('gender') || "";
-
-    // Parse medical history if it's an object
     try {
-      const parsedMedicalHistory = storedMedicalHistory ? 
-        (typeof storedMedicalHistory === 'object' ? 
-          storedMedicalHistory.history : 
-          storedMedicalHistory) : 
-        "";
+      // Basic user info
+      const storedUserName = localStorage.getItem('userName') || "";
+      const storedUserEmail = localStorage.getItem('email') || "";
+      const storedFullName = localStorage.getItem('fullName') || "";
+      const storedDateOfBirth = localStorage.getItem('dateOfBirth') || "";
+      const storedGender = localStorage.getItem('gender') || "";
+      const storedMedicalHistory = localStorage.getItem('medicalHistory') || "";
 
+      // Parse array data
+      const storedAllergies = JSON.parse(localStorage.getItem('allergies') || '[]');
+      const storedMedications = JSON.parse(localStorage.getItem('currentMedications') || '[]');
+      const storedConditions = JSON.parse(localStorage.getItem('chronicConditions') || '[]');
+
+      // Update state
       setUserName(storedUserName);
       setUserEmail(storedUserEmail);
       setFullName(storedFullName);
-      setMedicalHistory(parsedMedicalHistory);
       setDateOfBirth(storedDateOfBirth);
       setGender(storedGender);
-      setAllergies(JSON.parse(localStorage.getItem('allergies') || '[]'));
-      setMedications(JSON.parse(localStorage.getItem('currentMedications') || '[]'));
-      setConditions(JSON.parse(localStorage.getItem('chronicConditions') || '[]'));
+      setMedicalHistory(storedMedicalHistory);
+      setAllergies(storedAllergies);
+      setMedications(storedMedications);
+      setConditions(storedConditions);
+      
     } catch (error) {
-      console.error('Error parsing medical history:', error);
+      console.error('Error parsing stored data:', error);
     }
   }, []);
 

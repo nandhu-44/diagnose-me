@@ -39,16 +39,16 @@ export default function LoginPage() {
       username: userData.user.username,
       fullName: userData.user.fullName,
       email: userData.user.email,
-      medicalHistory: userData.user.medicalHistory || '',
-      dateOfBirth: userData.user.dateOfBirth || '',
-      gender: userData.user.gender || '',
-      allergies: JSON.stringify(userData.user.allergies || []),
-      currentMedications: JSON.stringify(userData.user.currentMedications || []),
-      chronicConditions: JSON.stringify(userData.user.chronicConditions || [])
+      dateOfBirth: userData.user.medicalHistory?.dateOfBirth || '',
+      gender: userData.user.medicalHistory?.gender || '',
+      medicalHistory: userData.user.medicalHistory?.history || '',
+      allergies: JSON.stringify(userData.user.medicalHistory?.allergies || []),
+      currentMedications: JSON.stringify(userData.user.medicalHistory?.currentMedications || []),
+      chronicConditions: JSON.stringify(userData.user.medicalHistory?.chronicConditions || [])
     };
 
     Object.entries(fieldsToStore).forEach(([key, value]) => {
-      localStorage.setItem(key, value);
+      if (value !== undefined) localStorage.setItem(key, value);
     });
   };
 
